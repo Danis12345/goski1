@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Цифровой ID</title>
+    <style>
+        /* БАЗОВЫЕ НАСТРОЙКИ */
+        :root {
+            --bg-dark: #151515;
+            --card-qr: #ffffff;
+            --folder-passport: #f5e3e3;
+            --folder-family: #cdecce;
+            --folder-auto: #f5e3e8;
+            --text-main: #333333;
+            --blue-link: #3058d6;
+            
+            /* Цвета для паспорта */
+            --pass-bg-outer: linear-gradient(180deg, #ecd4d8 0%, #e2c0c5 100%);
+            --pass-bg-inner: #fdf5f6;
+            --pass-text-red: #8b3a42;
+            --pass-label: #888888;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-dark);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- ШАПКА ОБЩАЯ --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            margin-top: 10px;
+        }
+
+        .header-icon {
+            width: 24px; height: 24px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; cursor: pointer;
+        }
+
+        .header-title {
+            display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 500;
+        }
+
+        .verified-badge {
+            width: 16px; height: 16px; background: #2b5efc; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+        }
+
+        /* --- ГЛАВНЫЙ ЭКРАН (QR И ПАПКИ) --- */
+        #main-screen { display: flex; }
+        
+        .qr-section { padding: 0 16px; margin-top: 20px; z-index: 10; display: flex; justify-content: center; }
+        .qr-card {
+            background: var(--card-qr); border-radius: 28px; padding: 30px 20px 20px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 90%; max-width: 360px; height: 50vh; justify-content: center;
+        }
+        .qr-image-wrapper { position: relative; width: 220px; height: 220px; margin-bottom: 25px; }
+        .qr-image-wrapper img { width: 100%; height: 100%; object-fit: contain; }
+        .qr-center-logo {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; padding: 3px;
+        }
+        .qr-center-logo-inner {
+            width: 100%; height: 100%; background: #3058d6; border-radius: 50%; position: relative;
+        }
+        .qr-center-logo-inner::after {
+            content: ''; position: absolute; bottom: 6px; right: 6px; width: 12px; height: 12px; background: #8e54e9; border-radius: 50%; border: 2px solid white;
+        }
+        .qr-link { color: var(--blue-link); font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+
+        .folders-section { padding: 0 16px; margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .folder-wrapper {
+            position: relative; width: 100%; height: 80px; background: var(--folder-passport); border-radius: 16px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .folder-wrapper:active { transform: translateY(2px); }
+        .folder-content { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+        .folder-left { display: flex; align-items: center; gap: 15px; }
+        .folder-icon-bg { width: 32px; height: 32px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; justify-content: center; align-items: center; }
+        .folder-icon { width: 20px; height: 20px; }
+        .folder-text { color: var(--text-main); font-size: 16px; font-weight: 500; }
+        .offline-icon { width: 24px; height: 24px; }
+
+        .z-3 { z-index: 3; } .z-2 { z-index: 2; } .z-1 { z-index: 1; }
+        .bg-passport { background-color: var(--folder-passport); }
+        .bg-family { background-color: var(--folder-family); }
+        .bg-auto { background-color: var(--folder-auto); }
+
+        /* --- ЭКРАН ПАСПОРТА --- */
+        #passport-screen { display: none; padding-bottom: 30px; background: linear-gradient(to right, #000000, #553719); }
+        
+        .pass-top-info {
+            display: flex; justify-content: space-between; align-items: flex-start; padding: 0 20px; margin-top: 10px; margin-bottom: 20px;
+        }
+        
+        .pass-titles { display: flex; flex-direction: column; }
+        .gos-text { color: #aaa; font-size: 12px; text-transform: lowercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .pass-main-title { font-size: 22px; font-weight: 600; color: white; }
+        
+        .eagle-icon { width: 44px; height: 44px; opacity: 0.9; }
+
+        /* Карточка с данными */
+        .pass-card {
+            background: var(--pass-bg-outer); border-radius: 20px; margin: 0 16px 16px 16px; display: flex; flex-direction: column; position: relative; overflow: hidden;
+        }
+        
+        /* Водяной знак орла на фоне карточки */
+        .pass-card::before {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z" fill="none" stroke="%23ffffff" stroke-width="2" opacity="0.15"/></svg>') no-repeat center;
+            background-size: contain; z-index: 0; pointer-events: none;
+        }
+
+        .pass-card-header {
+            text-align: center; color: var(--pass-text-red); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; padding: 14px 0 12px; position: relative; z-index: 1;
+        }
+
+        .pass-card-body {
+            background: var(--pass-bg-inner); border-radius: 18px; margin: 0 4px 4px 4px; padding: 16px; position: relative; z-index: 1;
+        }
+
+        /* Поля данных */
+        .pass-field { margin-bottom: 14px; }
+        .pass-field:last-child { margin-bottom: 0; }
+        .pass-row { display: flex; justify-content: space-between; margin-bottom: 14px; }
+        .pass-row .pass-field { margin-bottom: 0; width: 48%; }
+
+        .pass-label { font-size: 11px; color: var(--pass-label); margin-bottom: 4px; display: block; }
+        .pass-value { font-size: 15px; color: var(--text-main); font-weight: 400; line-height: 1.3; }
+        
+        .value-with-copy { display: flex; align-items: center; gap: 8px; }
+        .copy-icon { width: 16px; height: 16px; stroke: var(--pass-text-red); fill: none; stroke-width: 1.5; cursor: pointer; }
+
+        /* Кнопки внизу */
+        .pass-btn-qr {
+            background: white; color: var(--text-main); font-size: 16px; font-weight: 500; border: none; border-radius: 16px; padding: 16px; margin: 0 16px 12px; display: flex; justify-content: center; align-items: center; gap: 10px; cursor: pointer;
+        }
+        .qr-small-icon { width: 20px; height: 20px; fill: currentColor; }
+
+        .pass-btn-copy {
+            background: #502b30; color: white; font-size: 16px; font-weight: 500; border: none; border-radius: 16px; padding: 16px; margin: 0 16px; cursor: pointer; opacity: 0.95;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="main-screen">
+        <header class="header">
+            <svg class="header-icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <div class="header-title">
+                Цифровой ID
+                <div class="verified-badge">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+            </div>
+            <svg class="header-icon" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5" fill="white" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="white" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="white" stroke="none"/></svg>
+        </header>
+
+        <div class="qr-section">
+            <div class="qr-card">
+                <div class="qr-image-wrapper">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://www.gosuslugi.ru/&color=000000&bgcolor=ffffff" alt="QR">
+                    <div class="qr-center-logo"><div class="qr-center-logo-inner"></div></div>
+                </div>
+                <div class="qr-link">
+                    Возможности вашего QR
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="folders-section">
+            <img src="pidor.png" alt="Pidor" style="width:100%;height:auto;" onclick="openScreen('passport-screen')">
+        </div>
+    </div>
+
+    <div class="app-container" id="passport-screen">
+        <header class="header">
+            <svg class="header-icon" onclick="openScreen('main-screen')" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <div class="header-title">
+                Цифровой ID
+                <div class="verified-badge">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+            </div>
+            <svg class="header-icon" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5" fill="white" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="white" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="white" stroke="none"/></svg>
+        </header>
+
+        <div class="pass-top-info">
+            <div class="pass-titles">
+                <span class="gos-text">госуслуги</span>
+                <span class="pass-main-title">Паспорт РФ</span>
+            </div>
+            <img src="Gerb.ico" class="eagle-icon" alt="Gerb icon">
+        </div>
+
+        <div class="pass-card">
+            <div class="pass-card-header">РОССИЙСКАЯ ФЕДЕРАЦИЯ</div>
+            <div class="pass-card-body">
+                <div class="pass-field">
+                    <span class="pass-label">Серия и номер</span>
+                    <div class="value-with-copy">
+                        <span class="pass-value" style="font-size: 18px; font-weight: 500;">4617 859077</span>
+                        <svg class="copy-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </div>
+                </div>
+                
+                <div class="pass-field">
+                    <span class="pass-label">Кем выдан</span>
+                    <div class="pass-value">ГУ МВД России по Московской области</div>
+                </div>
+
+                <div class="pass-row">
+                    <div class="pass-field">
+                        <span class="pass-label">Дата выдачи</span>
+                        <div class="pass-value">07.03.2021</div>
+                    </div>
+                    <div class="pass-field">
+                        <span class="pass-label">Код подразделения</span>
+                        <div class="pass-value">500167</div>
+                    </div>
+                </div>
+
+                <div class="pass-field">
+                    <span class="pass-label">ФИО</span>
+                    <div class="pass-value">Ермолин Максим Дмитриевич</div>
+                </div>
+
+                <div class="pass-row">
+                    <div class="pass-field">
+                        <span class="pass-label">Пол</span>
+                        <div class="pass-value">Мужской</div>
+                    </div>
+                    <div class="pass-field">
+                        <span class="pass-label">Дата рождения</span>
+                        <div class="pass-value">17.02.2007</div>
+                    </div>
+                </div>
+
+                <div class="pass-field">
+                    <span class="pass-label">Место рождения</span>
+                    <div class="pass-value">гор. Электросталь Московской обл.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pass-card">
+            <div class="pass-card-header">АДРЕС РЕГИСТРАЦИИ</div>
+            <div class="pass-card-body">
+                <div class="pass-field">
+                    <span class="pass-label">Адрес</span>
+                    <div class="pass-value">144010, обл. Московская, г. Электросталь, ул. Восточная, дом 6, квартира 27</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pass-buttons">
+            <button class="pass-btn-qr">
+                <svg class="qr-small-icon" viewBox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm-4 0h2v2h-2zm2 2h2v2h-2zm-4-4h2v2h-2z"/></svg>
+                Предъявить
+            </button>
+            <button class="pass-btn-copy">Скопировать данные</button>
+        </div>
+
+    </div>
+
+    <script>
+        function openScreen(screenId) {
+            // Прячем все экраны
+            document.getElementById('main-screen').style.display = 'none';
+            document.getElementById('passport-screen').style.display = 'none';
+            
+            // Показываем нужный
+            document.getElementById(screenId).style.display = 'flex';
+            
+            // Скроллим наверх
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+</html>
